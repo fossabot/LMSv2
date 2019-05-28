@@ -1,0 +1,239 @@
+<?php
+session_start();
+if (IsSet($_SESSION['flog_login'])) {
+    $flog_login = $_SESSION['flog_login'];
+    $flog_senha = $_SESSION['flog_senha'];
+    $flog_nome = $_SESSION['flog_nome'];
+    $flog_sobrenome = $_SESSION['flog_subrenome'];
+    setcookie("login", "$flog_login", time() + 864000);
+    setcookie("senha", "$flog_senha", time() + 864000);
+} else {
+//die(print_r('nao entrou'));
+};
+//require_once ('dono.php');
+require_once ('funcao.php');
+$login = $_GET['login'];
+$gal = $_POST['galeria'];
+$titulo = $_POST['titulo'];
+$desc = $_POST['descricao'];
+if (isset($_POST['submit'])) {
+    $pasta = "$login/";
+    $file = $_FILES['arquivo'];
+    $temp = $file['tmp_name'];
+    $filename = $file['name'];
+    $largura_max = 600;
+    $altura_max = 400;
+    $arqSize = $_FILES['arquivo']['size'];
+    $permitido = 1024 * 4096;
+// Verifica o tipo de arquivo enviado
+    if ($arqSize > $permitido) {
+        echo '<H2>O tamanho do arquivo enviado é maior que o limite!</H2>';
+// Não houveram erros, move o arquivo
+        exit;
+    } else {
+        
+    }
+    global $login;
+    $conecta = mysql_connect("localhost", "photoscl_root", "raul1940") or print (mysql_error());
+    mysql_select_db("photoscl_fotos", $conecta) or print(mysql_error());
+    $sql = "SELECT * FROM tab_users WHERE login = '$flog_login'" or die();
+    $query = mysql_query($sql);
+    while ($row = mysql_fetch_array($query)) {
+        $id_u = $row["id"];
+    }
+    $result = mysql_query("SELECT * FROM tab_fotos_cgb WHERE url = '$filename' AND id_user = '$id_u'");
+    if (mysql_num_rows($result) > 0) {
+//exit();
+//$query = mysql_query($result,$conecta) or die  (print(mysql_error()));
+//$rowcount=mysqli_num_rows($query);
+//if ($rowcount != 0) {
+        echo "<H2>Já existe uma imagem com este nome. Mande outra foto !</H2>";
+        header('Location : http://www.photosclic.com');
+        exit;
+    } else {
+        
+    }
+
+
+// Para o usuário não enviar mais de 3 fotos por dia.
+    $data_agora = date("d/m/Y");
+    $data = date("Y/m/d");
+    $query_restri = mysql_query("SELECT * FROM tab_restri_cgb WHERE id_user='$id_u' and data = '$data'") or die(print(mysql_error()));
+    $data_restri = mysql_fetch_array($query_restri);
+    if ($data_restri['fotos'] > 2) {
+        echo "<H2>Você superou o limite de envio de fotos. Envie até 3 fotos por dia!</H2>";
+        header('Location : http://www.photosclic.com');
+        exit;
+    } else {
+
+// para evitar fotos com o mesmo nome
+// busco EXIF 
+        $exif_data = exif_read_data("$temp", "EXIF");
+        $emake = $exif_data['Make'];
+        $emodel = $exif_data['Model'];
+        $exposure = $exif_data['ExposureTime'];
+        $enumber = $exif_data['FNumber'];
+        $eiso = $exif_data['ISOSpeedRatings'];
+        $efocal = $exif_data['FocalLength'];
+        $lati = number_format(getGps($exif_data["GPSLatitude"], $exif_data['GPSLatitudeRef']), 6);
+        $longi = number_format(getGps($exif_data["GPSLongitude"], $exif_data['GPSLongitudeRef']), 6);
+
+// arquivo que contém a função
+        require ('redimensiona_fotos.php');
+// funcao que redimensionará a imagem
+// o retorno da função é o nome do arquivo 
+        $result = upload($temp, $filename, $largura_max, $altura_max, $pasta);
+// gravando nome do arquivo no banco de dados
+        $caminho = "./$login/" . $result;
+
+        $insert = mysql_query("INSERT INTO tab_fotos_cgb (id, id_user, album, galeria, url_completa, url, meta, titulo, comentario, camera, modelo, expo, abertura, iso, lente, latitude, longitude) 
+VALUES ('', '$id_u', '$login', '$gal', '$caminho', '" . $result . "', '', '$titulo', '$desc', '$emake', '$emodel', '$exposure', '$enumber',  '$eiso', '$efocal', '$lati', '$longi')") or die();
+    }
+//$id = idealizar($login);
+    global $tab_restri;
+    $data_agora = date("d/m/Y");
+    $data = date("Y/m/d");
+    $query_restri = mysql_query("SELECT * FROM tab_restri_cgb WHERE id_user='$id_u'") or die(print(mysql_error()));
+    $data_restri = mysql_fetch_array($query_restri);
+    if (!empty($data_restri['fotos']) && stamp2str($data_restri['data'], "/") == $data_agora) {
+        mysql_query("UPDATE tab_restri_cgb SET fotos=fotos+1 , data='$data' WHERE id_user='$id_u'")or die(print(mysql_error()));
+    } else {
+        if (stamp2str($data_restri['data'], "/") == $data_agora) {
+            mysql_query("INSERT INTO tab_restri_cgb (id_user, fotos, data) VALUES ('$id_u', '1', '$data')")or die(print(mysql_error()));
+        } else {
+            mysql_query("DELETE FROM tab_restri_cgb WHERE id_user='$id_u'") or die(print(mysql_error()));
+            mysql_query("INSERT INTO tab_restri_cgb (id_user, fotos, data) VALUES ('$id_u', '1', '$data')")or die(print(mysql_error()));
+        }
+    }
+}
+?>
+<head>
+    <style type="text/css">
+        img {border-width: 0}
+        * {font-family:'Lucida Grande', sans-serif;}
+    </style>
+    <script type="text/javascript" src="js/jquery-1.8.0.min.js"></script>
+    <script type="text/javascript" src="js/jquery.form.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            //elements
+            var progressbox = $('#progressbox');
+            var progressbar = $('#progressbar');
+            var statustxt = $('#statustxt');
+            var submitbutton = $("#SubmitButton");
+            var myform = $("#UploadForm");
+            var output = $("#output");
+            var completed = '0%';
+
+            $(myform).ajaxForm({
+                beforeSend: function () { //brfore sending form
+                    submitbutton.attr('disabled', ''); // disable upload button
+                    statustxt.empty();
+                    progressbox.slideDown(); //show progressbar
+                    progressbar.width(completed); //initial value 0% of progressbar
+                    statustxt.html(completed); //set status text
+                    statustxt.css('color', '#000'); //initial color of status text
+                },
+                uploadProgress: function (event, position, total, percentComplete) { //on progress
+                    progressbar.width(percentComplete + '%') //update progressbar percent complete
+                    statustxt.html(percentComplete + '%'); //update status text
+                    if (percentComplete > 50)
+                    {
+                        statustxt.css('color', '#fff'); //change status text to white after 50%
+                    }
+                },
+                complete: function (response) { // on complete
+            
+                    output.html(response.responseText); //update element with received data
+                    myform.resetForm();  // reset form
+                    submitbutton.removeAttr('disabled'); //enable submit button
+                    progressbox.slideUp(); // hide progressbar
+                }
+            });
+        });
+    </script>
+    <style>
+        #progressbox {
+            border: 1px solid #0099CC;
+            padding: 1px; 
+            position:relative;
+            width:400px;
+            border-radius: 3px;
+            margin: 10px;
+            display:none;
+            text-align:left;
+        }
+        #progressbar {
+            height:20px;
+            border-radius: 3px;
+            background-color: #003333;
+            width:1%;
+        }
+        #statustxt {
+            top:3px;
+            left:0%;
+            position:absolute;
+            display:inline-block;
+            color: #FFFFFF;
+        }
+    </style>
+</head>
+<div id="mainPage">
+<body align="center">
+    <table align="left">
+        <tr>
+            <td width="250"></td>
+            <td width="500" align="center"><h2 style="color:white;">Máximo : 4 Mb</h2></td>
+            <td width="50"></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td align="left">
+                <form action="" method="post" enctype="multipart/form-data" name="arquivo" id="UploadForm">
+
+                    <label for="arquivo" style="color:white;">Arquivo:
+                        <span><input type="file" name="arquivo" id="arquivo" value="" color='#ffffff'/></span> 
+                        <br /><br></label><left>
+                        <font style='font-size:15px' color='#ffffff' face='Arial'>
+                        Escolha a Galeria da sua foto:
+                        </font><br>
+                        <select name='galeria' size='1' id='galeria' align='center' style='position:absolute; width:150px;font-family:Verdana;font-size:12px;z-index:0;'>
+                            <option value='animais'>Animais</option>
+                            <option value='esporte'>Esporte e Ação</option>
+                            <option value='gentes'>Gentes e Locais</option>
+                            <option value='igrejas'>Igrejas e Templos</option>
+                            <option value='macros'>Macros</option>
+                            <option value='natureza'>Natureza</option>
+                            <option value='paisagem1'>Paisagem Natural</option>
+                            <option value='paisagem2'>Paisagem Urbana</option>
+                            <option value='retratos'>Retratos</option>
+                            <option value='outros'>Outros</option>
+                        </select>
+                        <br><br>
+                        <font style='font-size:15px' color='#ffffff' face='Arial'>
+                        T&iacute;tulo:
+                        </font><br>
+                        <input type="text" name="titulo" id="titulo" /> 
+                        </font><br>    
+                        <br>
+                        <font style='font-size:15px' color='#ffffff' face='Arial'>
+                        Descri&ccedil;&atilde;o:
+                        </font><br>
+                        <textarea type="textarea" name="descricao" id="descricao"></textarea>  
+                        </font><br><br>
+                        <input type="submit" name="submit" id="SubmitButton" value="Enviar">
+                        </form>
+                        <div id="progressbox">
+                            <div id="progressbar"></div >
+                            <div id="statustxt">0%</div >
+                        </div>
+                        </td>
+                        <tr>
+                            <td></td>
+                            <td></td> 
+                            <td></td>
+                        </tr>
+                        </table>
+                        <div id="output"></div>
+</body> </div>

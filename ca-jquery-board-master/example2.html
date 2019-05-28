@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link type="text/css" href="css/smoothness/jquery-ui-1.8.18.custom.css" rel="stylesheet" />
+    <link type="text/css" href="css/ui.board.css" rel="stylesheet" />
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="js/ui.board.element.js"></script>
+    <script type="text/javascript" src="js/ui.board.js"></script>
+    <script type="text/javascript" src="js/ui.board.edit.js"></script>
+    <script type="text/javascript" src="js/ui.board.order.js"></script>
+    <script>
+    $(function() {
+        // create the board in edit mode
+        $( "#board" ).board( {"edit": true} );
+
+        // add an element to the board
+        var el1 = $( "#board" ).board( "addElement" );
+
+        // set data for this element
+        el1.board_element("setData", "x", 120);
+        el1.board_element("setData", "y", 125);
+        el1.board_element("setData", "color", "green");
+        el1.board_element("setValue", 125.123);
+
+        // add an unnamed element
+        $( "#board" ).board( "addElement" );
+
+        // add an existing element to the board
+        // element color data is set
+        var el3 = $( '<li data-color="lightgray"></li>' )
+        $( "#board" ).board( "addElement", el3 );
+
+        // set value for element 3
+        el3.board_element( "setValue", 12.34 );
+
+        // stringify the board
+        if (typeof console !== 'undefined') {
+            console.log( $( "#board" ).board( "stringify" ) );
+        }
+    });
+    </script>
+    <title>jQuery ui board</title>
+</head>
+
+<body>
+    
+    <div>
+        <!-- edit toolbar -->
+        <input type="image" title="copy" onClick='
+            $( "#board" ).board( "copy" );
+        '  src="example-img/buttons/edit_copy.png" />
+        <input type="image" title="paste" onClick='
+            $( "#board" ).board( "paste" );
+        '  src="example-img/buttons/edit_paste.png" />
+        <input type="image" title="paste style" onClick='
+            $( "#board" ).board( "pasteStyle" );
+        '  src="example-img/buttons/edit_paste_style.png" />
+        <input type="image" title="delete" onClick='
+            $( "#board" ).board( "delElement" );
+        '  src="example-img/buttons/edit_delete.png" />
+        <input type="image" title="new" onClick='
+            $( "#board" ).board( "addElement" );
+        '  src="example-img/buttons/edit_new.png" />
+        
+        <!-- canvas toolbar -->
+        <input type="image" title="grid" onClick='
+            $( this ).toggleClass( "on" );
+            
+            var on = $( this ).hasClass( "on" );
+            $( "#board" ).board( "option", "grid-show", on );
+            $( "#board" ).board( "option", "grid-snap", on );
+        '  src="example-img/buttons/grid_xy.png" />
+        
+        <input type="image" title="down" onClick='
+            $( "#board" ).board( "downElement" );
+        '  src="example-img/buttons/selection-down.png" />
+        <input type="image" title="up" onClick='
+            $( "#board" ).board( "upElement" );
+        '  src="example-img/buttons/selection-up.png" />
+    </div>
+    
+    <div id="board"></div>
+</body>
+</html>

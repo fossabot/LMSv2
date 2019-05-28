@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link type="text/css" href="css/smoothness/jquery-ui-1.8.18.custom.css" rel="stylesheet" />
+    <link type="text/css" href="css/ui.board.css" rel="stylesheet" />
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="js/ui.board.element.js"></script>
+    <script type="text/javascript" src="js/ui.board.js"></script>
+
+    <script>
+    $(function() {
+        // create the board in edit mode
+        $( "#board" ).board( {"edit": true} );
+
+        // add an element to the board
+        var el1 = $( "#board" ).board( "addElement" );
+
+        // set data for this element
+        el1.board_element("setData", "x", 120);
+        el1.board_element("setData", "y", 125);
+        el1.board_element("setData", "color", "green");
+        el1.board_element("setValue", 125.123);
+
+        // add an unnamed element
+        $( "#board" ).board( "addElement" );
+
+        // add an existing element to the board
+        // element color data is set
+        var el3 = $( '<li data-color="lightgray"></li>' )
+        $( "#board" ).board( "addElement", el3 );
+
+        // set value for element 3
+        el3.board_element( "setValue", 12.34 );
+
+        // stringify the board
+        if (typeof console !== 'undefined') {
+            console.log( $( "#board" ).board( "stringify" ) );
+        }
+    });
+    </script>
+    <title>jQuery ui board</title>
+</head>
+
+<body>
+    <div id="board"></div>
+</body>
+</html>
